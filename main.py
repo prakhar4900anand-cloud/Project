@@ -5,13 +5,17 @@ Features:
 - Menu-driven interface
 - Customizable password policy (length, allowed character types)
 - Generate one or many passwords at a time
-- Rough password strength checker
+- Evaluate strength of any password
+- Save generated passwords to a local file
+- View saved passwords
 """
 
 import string
 import secrets
 from dataclasses import dataclass
 
+# File where generated passwords will be stored
+PASSWORD_FILE = "passwords.txt"
 
 # You can tweak this if you want a different symbol set
 SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/"
@@ -196,6 +200,41 @@ def prompt_for_policy() -> PasswordPolicy:
     return policy
 
 
+# ---------- File handling for saving / viewing passwords ----------
+
+def save_password_to_file(password: str, strength: str, filename: str = PASSWORD_FILE) -> None:
+    """
+    Append the given password and its strength to a local text file.
+    """
+    try:
+        with open(filename, "a", encoding="utf-8") as f:
+            f.write(f"{password}  (Strength: {strength})\n")
+        print(f"Password saved to '{filename}'.")
+    except OSError as exc:
+        print(f"Error saving password to file: {exc}")
+
+
+def view_saved_passwords(filename: str = PASSWORD_FILE) -> None:
+    """
+    Display all passwords stored in the local file.
+    """
+    print("\n--- Saved Passwords ---")
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if content:
+                print(content)
+            else:
+                print("No passwords saved yet.")
+    except FileNotFoundError:
+        print("No saved passwords file found.")
+    except OSError as exc:
+        print(f"Error reading password file: {exc}")
+    print("-" * 40)
+
+
+# ---------- Flows for menu actions ----------
+
 def generate_single_password_flow(policy: PasswordPolicy) -> None:
     """
     Flow helper: generate one password and display its strength.
@@ -207,6 +246,9 @@ def generate_single_password_flow(policy: PasswordPolicy) -> None:
         print("\nGenerated Password:", pwd)
         print("Strength:", strength)
         print("-" * 40)
+
+        if get_yes_no("Do you want to save this password to file?"):
+            save_password_to_file(pwd, strength)
     except PasswordGeneratorError as exc:
         print("Error:", exc)
 
@@ -229,6 +271,11 @@ def generate_multiple_passwords_flow(policy: PasswordPolicy) -> None:
             pwd = generate_password(policy)
             strength = evaluate_strength(pwd)
             print(f"{idx}. {pwd}  (Strength: {strength})")
+
+            # Ask once per password if user wants to save it
+            if get_yes_no("Save this password?"):
+                save_password_to_file(pwd, strength)
+
         except PasswordGeneratorError as exc:
             print(f"{idx}. Error generating password:", exc)
 
@@ -243,6 +290,21 @@ def show_policy(policy: PasswordPolicy) -> None:
     print(f"Uppercase (A-Z)  : {policy.use_uppercase}")
     print(f"Digits (0-9)     : {policy.use_digits}")
     print(f"Symbols          : {policy.use_symbols}")
+    print("-" * 40)
+
+
+def evaluate_existing_password_flow() -> None:
+    """
+    Let the user enter any password and show its strength.
+    """
+    pwd = input("\nEnter a password to evaluate: ").strip()
+    if not pwd:
+        print("You entered an empty password.")
+        return
+
+    strength = evaluate_strength(pwd)
+    print("Password:", pwd)
+    print("Estimated strength:", strength)
     print("-" * 40)
 
 
@@ -263,9 +325,11 @@ def main_menu() -> None:
         print("2. Change policy")
         print("3. Generate a single password")
         print("4. Generate multiple passwords")
-        print("5. Exit")
+        print("5. Evaluate an existing password")
+        print("6. View saved passwords")
+        print("7. Exit")
 
-        choice = input("Enter your choice (1-5): ").strip()
+        choice = input("Enter your choice (1-7): ").strip()
 
         if choice == "1":
             show_policy(policy)
@@ -276,10 +340,14 @@ def main_menu() -> None:
         elif choice == "4":
             generate_multiple_passwords_flow(policy)
         elif choice == "5":
+            evaluate_existing_password_flow()
+        elif choice == "6":
+            view_saved_passwords()
+        elif choice == "7":
             print("Exiting Password Generator. Goodbye!")
             break
         else:
-            print("Invalid choice. Please select a number from 1 to 5.")
+            print("Invalid choice. Please select a number from 1 to 7.")
 
 
 if __name__ == "__main__":
