@@ -1,19 +1,20 @@
 """
-Password Generator Project
---------------------------
+Simple Password Generator 
 
 Features:
-- Interactive menu
-- Customizable password policy:
-  - Length
-  - Uppercase / lowercase / digits / symbols
-- Batch generation (multiple passwords at once)
-- Basic password strength evaluation
+- Menu-driven interface
+- Customizable password policy (length, allowed character types)
+- Generate one or many passwords at a time
+- Rough password strength checker
 """
 
 import string
 import secrets
 from dataclasses import dataclass
+
+
+# You can tweak this if you want a different symbol set
+SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/"
 
 
 @dataclass
@@ -26,41 +27,51 @@ class PasswordPolicy:
 
 
 class PasswordGeneratorError(Exception):
-    """Custom exception for password generator errors."""
+    """Custom exception for password generator related issues."""
     pass
 
 
 def build_character_pool(policy: PasswordPolicy) -> str:
-    """Build the pool of characters based on the chosen policy."""
-    pool = ""
+    """
+    Build the pool of characters according to the given policy.
+
+    Raises:
+        PasswordGeneratorError: If no character types are enabled.
+    """
+    pool_parts = []
 
     if policy.use_lowercase:
-        pool += string.ascii_lowercase
+        pool_parts.append(string.ascii_lowercase)
     if policy.use_uppercase:
-        pool += string.ascii_uppercase
+        pool_parts.append(string.ascii_uppercase)
     if policy.use_digits:
-        pool += string.digits
+        pool_parts.append(string.digits)
     if policy.use_symbols:
-        # You can customize which symbols you want to allow
-        pool += "!@#$%^&*()-_=+[]{};:,.<>?/"
+        pool_parts.append(SYMBOLS)
 
-    if not pool:
-        raise PasswordGeneratorError("No character types selected. Please enable at least one type.")
+    if not pool_parts:
+        raise PasswordGeneratorError(
+            "No character types selected. "
+            "Please enable at least one character category."
+        )
 
-    return pool
+    return "".join(pool_parts)
 
 
 def generate_password(policy: PasswordPolicy) -> str:
-    """Generate a single password according to the given policy."""
+    """
+    Generate a single password that follows the given policy.
+
+    We try to guarantee at least one of each selected character type
+    (lowercase, uppercase, digits, symbols) for better strength.
+    """
     if policy.length <= 0:
-        raise PasswordGeneratorError("Password length must be positive.")
+        raise PasswordGeneratorError("Password length must be a positive integer.")
 
     pool = build_character_pool(policy)
-
-    # Ensure the password meets the criteria by including at least one of each selected type
     password_chars = []
 
-    # Add at least one from each selected category (for better strength)
+    # Ensure at least one character from each enabled category
     if policy.use_lowercase:
         password_chars.append(secrets.choice(string.ascii_lowercase))
     if policy.use_uppercase:
@@ -68,14 +79,13 @@ def generate_password(policy: PasswordPolicy) -> str:
     if policy.use_digits:
         password_chars.append(secrets.choice(string.digits))
     if policy.use_symbols:
-        password_chars.append(secrets.choice("!@#$%^&*()-_=+[]{};:,.<>?/"))
+        password_chars.append(secrets.choice(SYMBOLS))
 
-    # Fill the remaining length with random chars from the full pool
+    # Fill the remaining characters from the full pool
     while len(password_chars) < policy.length:
         password_chars.append(secrets.choice(pool))
 
-    # Shuffle the characters so the first few are not predictable
-    # secrets.choice doesn’t shuffle, so we can use secrets for indices
+    # Shuffle the list in-place using random indices (still using secrets)
     for i in range(len(password_chars)):
         j = secrets.randbelow(len(password_chars))
         password_chars[i], password_chars[j] = password_chars[j], password_chars[i]
@@ -85,20 +95,22 @@ def generate_password(policy: PasswordPolicy) -> str:
 
 def evaluate_strength(password: str) -> str:
     """
-    Simple heuristic to evaluate password strength.
-    This is basic and only for educational purposes.
+    Very simple strength estimator.
+
+    This is not cryptographically accurate, it's just a rough idea
+    based on length and variety of character types.
     """
     length_score = len(password)
 
-    lower = any(c.islower() for c in password)
-    upper = any(c.isupper() for c in password)
-    digits = any(c.isdigit() for c in password)
-    symbols = any(c in "!@#$%^&*()-_=+[]{};:,.<>?/" for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_upper = any(c.isupper() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_symbol = any(c in SYMBOLS for c in password)
 
-    variety_score = sum([lower, upper, digits, symbols])
+    variety_score = sum([has_lower, has_upper, has_digit, has_symbol])
 
-    # Combine scores
-    total_score = length_score + (variety_score * 2)
+    # Simple scoring rule: length + 2 * variety
+    total_score = length_score + (2 * variety_score)
 
     if total_score < 10:
         return "Weak"
@@ -111,7 +123,11 @@ def evaluate_strength(password: str) -> str:
 
 
 def get_yes_no(prompt: str) -> bool:
-    """Utility to safely get a yes/no answer from the user."""
+    """
+    Ask the user a yes/no question and return True/False.
+
+    Keeps asking until the user types something valid.
+    """
     while True:
         ans = input(prompt + " (y/n): ").strip().lower()
         if ans in ("y", "yes"):
@@ -121,26 +137,34 @@ def get_yes_no(prompt: str) -> bool:
         print("Invalid input. Please type 'y' or 'n'.")
 
 
-def get_int(prompt: str, min_value: int = None, max_value: int = None) -> int:
-    """Utility to safely get an integer from the user."""
+def get_int(prompt: str, min_value: int | None = None, max_value: int | None = None) -> int:
+    """
+    Ask the user for an integer, with optional min/max validation.
+    """
     while True:
-        value = input(prompt + ": ").strip()
-        if not value.isdigit():
+        raw = input(prompt + ": ").strip()
+
+        if not raw.isdigit():
             print("Please enter a valid positive integer.")
             continue
 
-        value = int(value)
+        value = int(raw)
+
         if min_value is not None and value < min_value:
             print(f"Please enter a value >= {min_value}.")
             continue
+
         if max_value is not None and value > max_value:
             print(f"Please enter a value <= {max_value}.")
             continue
+
         return value
 
 
 def prompt_for_policy() -> PasswordPolicy:
-    """Interactively ask the user for password policy settings."""
+    """
+    Interactive dialog to let the user configure a password policy.
+    """
     print("\n--- Configure Password Policy ---")
 
     length = get_int("Enter desired password length", min_value=4)
@@ -158,48 +182,80 @@ def prompt_for_policy() -> PasswordPolicy:
         use_symbols=use_symbols,
     )
 
-    # Ensure at least one character type is true
-    if not any([policy.use_lowercase, policy.use_uppercase, policy.use_digits, policy.use_symbols]):
-        print("You must select at least one character type. Using default policy instead.")
+    # Safety check: don't allow a policy with no character types at all
+    if not any([
+        policy.use_lowercase,
+        policy.use_uppercase,
+        policy.use_digits,
+        policy.use_symbols,
+    ]):
+        print("You must select at least one character type.")
+        print("Reverting to default policy with the chosen length.")
         policy = PasswordPolicy(length=length)
 
     return policy
 
 
-def generate_single_password_flow(policy: PasswordPolicy):
-    """Handle the flow for generating a single password."""
+def generate_single_password_flow(policy: PasswordPolicy) -> None:
+    """
+    Flow helper: generate one password and display its strength.
+    """
     try:
         pwd = generate_password(policy)
         strength = evaluate_strength(pwd)
+
         print("\nGenerated Password:", pwd)
         print("Strength:", strength)
         print("-" * 40)
-    except PasswordGeneratorError as e:
-        print("Error:", e)
+    except PasswordGeneratorError as exc:
+        print("Error:", exc)
 
 
-def generate_multiple_passwords_flow(policy: PasswordPolicy):
-    """Handle the flow for generating multiple passwords at once."""
-    count = get_int("How many passwords do you want to generate?", min_value=1, max_value=50)
+def generate_multiple_passwords_flow(policy: PasswordPolicy) -> None:
+    """
+    Flow helper: generate several passwords and print them one by one.
+    """
+    count = get_int(
+        "How many passwords do you want to generate?",
+        min_value=1,
+        max_value=50,
+    )
+
     print("\nGenerated Passwords:")
     print("-" * 40)
-    for i in range(1, count + 1):
+
+    for idx in range(1, count + 1):
         try:
             pwd = generate_password(policy)
             strength = evaluate_strength(pwd)
-            print(f"{i}. {pwd}  (Strength: {strength})")
-        except PasswordGeneratorError as e:
-            print(f"{i}. Error generating password:", e)
+            print(f"{idx}. {pwd}  (Strength: {strength})")
+        except PasswordGeneratorError as exc:
+            print(f"{idx}. Error generating password:", exc)
+
     print("-" * 40)
 
 
-def main_menu():
-    """Main menu loop for the application."""
+def show_policy(policy: PasswordPolicy) -> None:
+    """Print the current password policy in a readable format."""
+    print("\n--- Current Password Policy ---")
+    print(f"Length           : {policy.length}")
+    print(f"Lowercase (a-z)  : {policy.use_lowercase}")
+    print(f"Uppercase (A-Z)  : {policy.use_uppercase}")
+    print(f"Digits (0-9)     : {policy.use_digits}")
+    print(f"Symbols          : {policy.use_symbols}")
+    print("-" * 40)
+
+
+def main_menu() -> None:
+    """
+    Main loop of the program that shows the menu and responds to user commands.
+    """
     print("====================================")
-    print("     PYTHON PASSWORD GENERATOR      ")
+    print("        PYTHON PASSWORD TOOL        ")
     print("====================================")
 
-    policy = PasswordPolicy()  # start with default policy
+    # Start with a default policy; user can change it later
+    policy = PasswordPolicy()
 
     while True:
         print("\nMain Menu")
@@ -212,29 +268,18 @@ def main_menu():
         choice = input("Enter your choice (1-5): ").strip()
 
         if choice == "1":
-            print("\n--- Current Password Policy ---")
-            print(f"Length         : {policy.length}")
-            print(f"Lowercase (a-z): {policy.use_lowercase}")
-            print(f"Uppercase (A-Z): {policy.use_uppercase}")
-            print(f"Digits (0-9)   : {policy.use_digits}")
-            print(f"Symbols        : {policy.use_symbols}")
-            print("-" * 40)
-
+            show_policy(policy)
         elif choice == "2":
             policy = prompt_for_policy()
-
         elif choice == "3":
             generate_single_password_flow(policy)
-
         elif choice == "4":
             generate_multiple_passwords_flow(policy)
-
         elif choice == "5":
             print("Exiting Password Generator. Goodbye!")
             break
-
         else:
-            print("Invalid choice. Please select from 1 to 5.")
+            print("Invalid choice. Please select a number from 1 to 5.")
 
 
 if __name__ == "__main__":
