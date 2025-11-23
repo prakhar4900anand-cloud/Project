@@ -27,11 +27,16 @@ python -m unittest tests/test_password.py
 
 Screenshots
 
-<img width="1478" height="540" alt="image" src="https://github.com/user-attachments/assets/aaf1cc91-1afa-4f5f-8b91-8d59d3ead306" />
-<img width="871" height="482" alt="image" src="https://github.com/user-attachments/assets/18b60404-c6a4-4eed-9ed2-404f7d12bc8a" />
-<img width="722" height="503" alt="image" src="https://github.com/user-attachments/assets/0d6706a0-cb2c-4137-8c30-c12cc5cf7217" />
-<img width="515" height="96" alt="image" src="https://github.com/user-attachments/assets/99d66a2e-5ede-4a03-8389-551d58852109" />
-<img width="659" height="422" alt="image" src="https://github.com/user-attachments/assets/c3308d45-9c65-44c8-b639-4c68d72a456c" />
+<img width="1860" height="658" alt="image" src="https://github.com/user-attachments/assets/24fe89c4-59d5-49b4-a9bb-abec0be11d8a" />
+<img width="715" height="494" alt="image" src="https://github.com/user-attachments/assets/40e6e007-64a4-4a54-81c5-00b69adf41d2" />
+<img width="814" height="568" alt="image" src="https://github.com/user-attachments/assets/677cd062-9f6d-4015-92eb-b70535687b1a" />
+<img width="515" height="96" alt="image" src="https://github.com/user-attachments/assets/d277f057-c229-49d6-b8ab-97fb9b94f177" />
+<img width="1019" height="466" alt="image" src="https://github.com/user-attachments/assets/5fd9e9c7-d7ac-45e4-bc3b-d59f6d068d35" />
+
+
+
+
+
 
 
 
